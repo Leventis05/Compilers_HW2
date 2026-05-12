@@ -1,6 +1,7 @@
 import syntaxtree.*;
 import visitor.*;
 
+
 public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     /** Jeck list:
      *      ~ Type checking
@@ -15,6 +16,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      *         - while
      *         - for (maybe?)
      *      ~ Inheritance
+     * TODO Expression, Identifier, 
      */
 
     ClassInfo curClass;
@@ -49,8 +51,88 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
         return null;
     }
-    
 
+    /** STATEMENTS
+     * Grammar production:
+     * f0 -> Block()
+     *       | AssignmentStatement()
+     *       | ArrayAssignmentStatement()
+     *       | IfStatement()
+     *       | WhileStatement()
+     *       | PrintStatement()
+     */
+
+    /**
+     * Grammar production:
+     * f0 -> Identifier()
+     * f1 -> "="
+     * f2 -> Expression()
+     * f3 -> ";"
+     */
+    public String visit(AssignmentStatement sm, SymbolTable st) throws SemanticException {
+        String typeLeft, typeRight;
+
+        typeLeft = sm.f0.accept(this, st);
+        typeRight = sm.f2.accept(this, st);
+
+        if (!typeLeft.equals(typeRight))
+            throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);
+
+        return null;
+    }
+
+    /**
+     * Grammar production:
+     * f0 -> Identifier()
+     * f1 -> "["
+     * f2 -> Expression()
+     * f3 -> "]"
+     * f4 -> "="
+     * f5 -> Expression()
+     * f6 -> ";"
+     */
+    public String visit(ArrayAssignmentStatement sm, SymbolTable st) throws SemanticException {
+        String typeLeft = sm.f0.accept(this, st),
+               indexType = sm.f2.accept(this, st),
+               typeRight = sm.f5.accept(this, st);
+        
+        if (!indexType.equals("int"))
+            throw new SemanticException("Array index must be int");
+        
+        if (!typeLeft.equals(typeRight))
+            throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);
+ 
+        return null;
+    }
+
+    /**
+     * Grammar production:
+     * f0 -> "if"
+     * f1 -> "("
+     * f2 -> Expression()
+     * f3 -> ")"
+     * f4 -> Statement()
+     * f5 -> "else"
+     * f6 -> Statement()
+     */
+    public String visit(IfStatement sm, SymbolTable st) throws SemanticException {
+        String cond = sm.f2.accept(this, st);
+
+        if (!cond.equals("boolean"))
+            throw new SemanticException("Branch condition must be boolean");
+    
+        return null;
+    }
+
+    public String visit(WhileStatement sm, SymbolTable st) throws SemanticException {
+     
+        return null;
+    }
+
+    public String visit(PrintStatement sm, SymbolTable st) throws SemanticException {
+     
+        return null;
+    }
 
 
 
@@ -87,7 +169,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
     //Identifier
     public String visit(Identifier id, SymbolTable st) {
-        //check type in scope
+        //TODO check type in scope
         return "";
     }
 

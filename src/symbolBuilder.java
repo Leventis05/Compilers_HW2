@@ -8,6 +8,35 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
 
     /**
      * Grammar production:
+     * f1 -> Identifier()
+     * f6 -> "main"
+     * f8 -> "String"
+     * f9 -> "["
+     * f10 -> "]"
+     * f11 -> Identifier()
+     * f14 -> ( VarDeclaration() )*
+     * f15 -> ( Statement() )*
+     */
+    public String visit(MainClass mc, SymbolTable st) {
+        curClass = new ClassInfo();
+        curClass.name = mc.f1.toString();
+        curClass.parentName = null;
+
+        curMethod = new MethodInfo();
+        curMethod.name = mc.f6.toString();
+
+        VarInfo argv = new VarInfo();
+        argv.name = mc.f11.toString();
+        argv.type = mc.f8.toString() + mc.f9.toString() + mc.f10.toString();
+
+        curMethod.parameters.put(argv.name, argv);
+        
+        mc.f14.accept(this, st);
+        return null;
+    }
+
+    /**
+     * Grammar production:
      * f0 -> "class"
      * f1 -> Identifier()
      * f2 -> "{"

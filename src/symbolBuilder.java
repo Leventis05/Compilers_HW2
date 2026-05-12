@@ -6,6 +6,9 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
     ClassInfo curClass;
     MethodInfo curMethod;
 
+    //TODO check duplicates
+
+
     /**
      * Grammar production:
      * f1 -> Identifier()
@@ -27,7 +30,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
 
         VarInfo argv = new VarInfo();
         argv.name = mc.f11.toString();
-        argv.type = mc.f8.toString() + mc.f9.toString() + mc.f10.toString();
+        argv.type = mc.f8.toString() + mc.f9.toString() + mc.f10.toString(); //String[]
 
         curMethod.parameters.put(argv.name, argv);
         

@@ -5,6 +5,25 @@ public class SymbolTable {
     // GLOBAL scope: class name → ClassInfo
     public HashMap<String, ClassInfo> classes = new HashMap<>();
 
+    public String checkGetVarType(ClassInfo cClass, MethodInfo method, String name) {
+        ClassInfo parent = classes.get(cClass.parentName);
+        
+        if (method.parameters.containsKey(name))
+            return method.parameters.get(name).type;
+        
+        else if (method.locals.containsKey(name))
+            return method.locals.get(name).type;
+
+        else if (cClass.fields.containsKey(name))
+            return cClass.fields.get(name).type;
+
+        else if (parent.fields.containsKey(name))
+            return parent.fields.get(name).type;
+        
+        else
+            return null;
+    }
+
 }
 
 /* SYMBOL TABLE CLASSES */

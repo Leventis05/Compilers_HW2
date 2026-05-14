@@ -42,6 +42,14 @@ class MethodInfo {
     // Name , info
     HashMap<String, VarInfo> parameters;
     HashMap<String, VarInfo> locals;
+
+    public String[] getParamTypes() {
+        String ret = "";
+        for (String param : parameters.keySet())
+            ret += parameters.get(param).type + ",";
+
+        return ret.split(",");
+    }
 }
 
 class VarInfo {

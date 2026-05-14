@@ -73,22 +73,12 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      */
     public String visit(AssignmentStatement sm, SymbolTable st) {
         String typeLeft, typeRight;
-        ClassInfo cL, cR;
 
         typeLeft = sm.f0.accept(this, st);
         typeRight = sm.f2.accept(this, st);
 
-        if (!typeLeft.equals(typeRight)) {
-            if (st.classes.containsKey(typeLeft) && st.classes.containsKey(typeRight)) {
-                cL = st.classes.get(typeLeft);
-                cR = st.classes.get(typeRight);
-                
-                if (!cL.name.equals(cR.parentName))
-                    throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);
-                
-            } else
-                throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);
-        }            
+        if (!objEq(typeLeft, typeRight, st))
+            throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);         
 
         return null;
     }
@@ -271,17 +261,33 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      */
     public String visit(MessageSend e, SymbolTable st) {
         String objType = e.f0.accept(this, st), methName = e.f2.accept(this, st);
-        ClassInfo obj = st.classes.get(objType);
+        String args = e.f4.accept(this, st);
+        String[] argsList = args.split(","), given;
+
+        ClassInfo obj = st.classes.get(objType),
+        parent = (obj != null && obj.parentName != null) ? st.classes.get(obj.parentName) : null;
+
         MethodInfo callee = (obj != null) ? obj.methods.get(methName) : null;
-        
+        if (callee == null)
+            parent.methods.get(methName);
+
+
         if (obj == null)
             throw new SemanticException("Class: " + objType + " is not declared in this scope");
         
         if (callee == null)
             throw new SemanticException("Class: " + objType + " does not contain any method: " + methName);
 
-        return callee.returnType;
 
+        given = callee.getParamTypes();
+        if (given.length != argsList.length)
+            throw new SemanticException("Invalid method call: " + methName);
+
+        for (int i = 0; i < given.length; i++)
+            if (!objEq(given[i], argsList[i], st))
+                throw new SemanticException("Invalid method call: " + methName);
+
+        return callee.returnType;
     }
 
 
@@ -377,22 +383,48 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
 
 
-
-
-    /** Expression
+    // HANDLE EXP LISTS
+    /**Exp list
      * Grammar production:
-     * f0 -> AndExpression()
-     *       | CompareExpression()
-     *       | PlusExpression()
-     *       | MinusExpression()
-     *       | TimesExpression()
-     *       | ArrayLookup()
-     *       | ArrayLength()
-     *       | MessageSend()
-     *       | PrimaryExpression()
+     * f0 -> Expression()
+     * f1 -> ExpressionTail()
      */
+    public String visit(ExpressionList e, SymbolTable st) {
+        String argType = e.f0.accept(this, st), argTail = e.f1.accept(this, st);
+        return argType + argTail;
+    }
+
+    /**Exp tail
+     * Grammar production:
+     * f0 -> ( ExpressionTerm() )*
+     */
+    public String visit(ExpressionTail e, SymbolTable st) {
+        String types = "";
+
+        for (Node node : e.f0.nodes)
+            types += "," + node.accept(this, st);
+
+        return types;
+    }
+
 
     
+
+    public boolean objEq(String type_A, String type_B, SymbolTable st) {
+        if (!type_A.equals(type_B)) {
+            if (st.classes.containsKey(type_A) && st.classes.containsKey(type_B)) {
+                ClassInfo cL = st.classes.get(type_A);
+                ClassInfo cR = st.classes.get(type_B);
+                
+                if (!cL.name.equals(cR.parentName))
+                    return false;
+                
+            } else
+                return false;
+        }
+
+        return true;
+    }
 
     public String checkLRtypes(String type_A, String type_B, String valid_t, String msg) {
 

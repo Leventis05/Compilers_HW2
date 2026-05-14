@@ -6,9 +6,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
     ClassInfo curClass;
     MethodInfo curMethod;
 
-    //TODO check duplicates
-
-
+    //TODO overloading, dup methods or classes
     /**
      * Grammar production:
      * f1 -> Identifier()
@@ -34,6 +32,8 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
 
         curMethod.parameters.put(argv.name, argv);
         
+        st.classes.put("MainClass", curClass);
+
         mc.f14.accept(this, st);
         return null;
     }
@@ -71,11 +71,18 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
      * f7 -> "}"
      */
     public String visit(ClassExtendsDeclaration cd, SymbolTable st) {
-
+        ClassInfo parent;
         curClass = new ClassInfo();
         curClass.name = cd.f1.toString();
         curClass.parentName = cd.f3.toString();
         
+        if (st.classes.containsKey(curClass.parentName)) {
+            parent = st.classes.get(curClass.parentName);
+            if (parent.parentName != null)
+                throw new SemanticException("Only single inheritance supported");
+        } else
+            throw new SemanticException("Class: " + curClass.parentName + " not declared at this scope");
+
         curMethod = null;
         cd.f5.accept(this, st);
         cd.f6.accept(this, st);
@@ -90,16 +97,23 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
      * f2 -> ";"
      */
     public String visit(VarDeclaration vd, SymbolTable st) {
-
         VarInfo newVar = new VarInfo();
 
         newVar.type = vd.f0.toString();
         newVar.name = vd.f1.toString();
 
         if (curMethod != null) {
+            //CHECK FOR DUPS IN METHOD
+            if (curMethod.locals.containsKey(newVar.name))
+                throw new SemanticException("Variable: " + newVar.name + " redeclared in this scope");
             curMethod.locals.put(newVar.name, newVar);
+
         } else {
+            //CHECK FOR DUPS IN CLASS
+            if (curClass.fields.containsKey(newVar.name))
+                throw new SemanticException("Field: " + newVar.name + " declared twice in class " + curClass.name);
             curClass.fields.put(newVar.name, newVar);
+
         }
 
         return null;

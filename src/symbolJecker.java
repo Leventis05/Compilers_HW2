@@ -17,7 +17,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      *         - for (maybe?)
      *      ~ Inheritance
      * TODO Expression, Identifier, 
-     * TODO check type decl
+     * TODO check type decl, inheritance
      */
 
     ClassInfo curClass;
@@ -55,13 +55,14 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
     /** STATEMENTS
      * Grammar production:
-     * f0 -> Block()
-     *       | AssignmentStatement()
-     *       | ArrayAssignmentStatement()
-     *       | IfStatement()
-     *       | WhileStatement()
-     *       | PrintStatement()
+     * f0 -> Block() !
+     *       | AssignmentStatement() !
+     *       | ArrayAssignmentStatement() !
+     *       | IfStatement() !
+     *       | WhileStatement() !
+     *       | PrintStatement() !
      */
+
 
     /**
      * Grammar production:
@@ -72,12 +73,22 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      */
     public String visit(AssignmentStatement sm, SymbolTable st) {
         String typeLeft, typeRight;
+        ClassInfo cL, cR;
 
         typeLeft = sm.f0.accept(this, st);
         typeRight = sm.f2.accept(this, st);
 
-        if (!typeLeft.equals(typeRight))
-            throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);
+        if (!typeLeft.equals(typeRight)) {
+            if (st.classes.containsKey(typeLeft) && st.classes.containsKey(typeRight)) {
+                cL = st.classes.get(typeLeft);
+                cR = st.classes.get(typeRight);
+                
+                if (!cL.name.equals(cR.parentName))
+                    throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);
+                
+            } else
+                throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);
+        }            
 
         return null;
     }
@@ -154,8 +165,8 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      *       | PlusExpression() !
      *       | MinusExpression() !
      *       | TimesExpression() !
-     *       | ArrayLookup()
-     *       | ArrayLength()
+     *       | ArrayLookup() !
+     *       | ArrayLength() !
      *       | MessageSend()
      *       | PrimaryExpression()
      */
@@ -220,12 +231,59 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     public String visit(ArrayLookup e, SymbolTable st) {
         String arrType = e.f0.accept(this, st), inType = e.f2.accept(this, st);
 
-        if (arrType.equals("String[]")) 
-            if ()
-            
+        checkLRtypes(inType, inType, "int", "Array lookup expects int");
+        
+        //CHECK FOR ARGV
+        if (arrType.equals("String[]"))
+            if (!curClass.name.equals(st.classes.get("MainClass").name) || 
+                !curMethod.name.equals("main"))
+                throw new SemanticException("argv called on non main function");
+            else
+                return "String";
+
         checkLRtypes(arrType, arrType, "int[]", "Lookup op used on non array obj");
         return "int";
     }
+
+    /** Arr len
+     * Grammar production:
+     * f0 -> PrimaryExpression()
+     * f1 -> "."
+     * f2 -> "length"
+     */
+    public String visit(ArrayLength e, SymbolTable st) {
+        String arrType = e.f0.accept(this, st);
+
+        if (!arrType.equals("int[]") && !arrType.equals("String[]"))
+            throw new SemanticException("Length Expression used on non array object");
+
+        return "int";
+    }
+
+    /**Method Call
+     * Grammar production:
+     * f0 -> PrimaryExpression()
+     * f1 -> "."
+     * f2 -> Identifier()
+     * f3 -> "("
+     * f4 -> ( ExpressionList() )?
+     * f5 -> ")"
+     */
+    public String visit(MessageSend e, SymbolTable st) {
+        String objType = e.f0.accept(this, st), methName = e.f2.accept(this, st);
+        ClassInfo obj = st.classes.get(objType);
+        MethodInfo callee = (obj != null) ? obj.methods.get(methName) : null;
+        
+        if (obj == null)
+            throw new SemanticException("Class: " + objType + " is not declared in this scope");
+        
+        if (callee == null)
+            throw new SemanticException("Class: " + objType + " does not contain any method: " + methName);
+
+        return callee.returnType;
+
+    }
+
 
     /** Primary Expression
      * Grammar production:

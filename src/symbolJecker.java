@@ -18,8 +18,8 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      *      ~ Inheritance
      */
 
-    ClassInfo curClass;
-    MethodInfo curMethod;
+    private ClassInfo curClass;
+    private MethodInfo curMethod;
     
     /**
      * Grammar production:

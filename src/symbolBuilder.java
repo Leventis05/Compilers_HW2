@@ -3,8 +3,8 @@ import visitor.*;
 
 public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
 
-    ClassInfo curClass;
-    MethodInfo curMethod;
+    private ClassInfo curClass;
+    private MethodInfo curMethod;
 
     //TODO overloading, dup methods or classes
     /**

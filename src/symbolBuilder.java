@@ -32,6 +32,9 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
 
         curMethod.parameters.put(argv.name, argv);
         
+        if (st.classes.containsKey("MainClass"))
+            throw new SemanticException("Main class appears twice");
+
         st.classes.put("MainClass", curClass);
 
         mc.f14.accept(this, st);
@@ -52,10 +55,16 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
         curClass = new ClassInfo();
         curClass.name = cd.f1.toString();
         curClass.parentName = null;
+
+        if (st.classes.containsKey(curClass.name))
+            throw new SemanticException("Class: " + curClass.name + " defined twice in this scope");
         
+        curMethod = null;
         cd.f3.accept(this, st);
         cd.f4.accept(this, st);
-
+        
+        st.classes.put(curClass.name, curClass);
+    
         return null;
     }
 
@@ -76,12 +85,11 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
         curClass.name = cd.f1.toString();
         curClass.parentName = cd.f3.toString();
         
-        if (st.classes.containsKey(curClass.parentName)) {
-            parent = st.classes.get(curClass.parentName);
-            if (parent.parentName != null)
-                throw new SemanticException("Only single inheritance supported");
-        } else
+        parent = st.classes.get(curClass.parentName);
+        if (parent == null)
             throw new SemanticException("Class: " + curClass.parentName + " not declared at this scope");
+        if (parent.parentName != null)
+            throw new SemanticException("Only single inheritance supported");
 
         curMethod = null;
         cd.f5.accept(this, st);
@@ -145,7 +153,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
     md.f4.accept(this, st);
     md.f7.accept(this, st);
 
-    curClass.methods.put(curMethod.name, curMethod);
+    curClass.insertMethod(curMethod, st);
 
     return null;
    }

@@ -16,8 +16,6 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      *         - while
      *         - for (maybe?)
      *      ~ Inheritance
-     * TODO Expression, Identifier, 
-     * TODO check type decl, inheritance
      */
 
     ClassInfo curClass;
@@ -25,24 +23,9 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     
     /**
      * Grammar production:
-     * f0 -> "class"
      * f1 -> Identifier()
-     * f2 -> "{"
-     * f3 -> "public"
-     * f4 -> "static"
-     * f5 -> "void"
      * f6 -> "main"
-     * f7 -> "("
-     * f8 -> "String"
-     * f9 -> "["
-     * f10 -> "]"
-     * f11 -> Identifier()
-     * f12 -> ")"
-     * f13 -> "{"
-     * f14 -> ( VarDeclaration() )*
      * f15 -> ( Statement() )*
-     * f16 -> "}"
-     * f17 -> "}"
      */
     public String visit(MainClass mc, SymbolTable st) {
         curClass = st.classes.get(mc.f1.toString()); // Fetch main class from st
@@ -77,7 +60,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         typeLeft = sm.f0.accept(this, st);
         typeRight = sm.f2.accept(this, st);
 
-        if (!objEq(typeLeft, typeRight, st))
+        if (!st.objEq(typeLeft, typeRight))
             throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);         
 
         return null;
@@ -148,7 +131,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     }
 
 
-    /** Expression
+    /** Expressions
      * Grammar production:
      * f0 -> AndExpression() !
      *       | CompareExpression() !
@@ -157,10 +140,9 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      *       | TimesExpression() !
      *       | ArrayLookup() !
      *       | ArrayLength() !
-     *       | MessageSend()
+     *       | MessageSend() !
      *       | PrimaryExpression()
      */
-
     /** &&
      * Grammar production:
      * f0 -> PrimaryExpression()
@@ -260,38 +242,33 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f5 -> ")"
      */
     public String visit(MessageSend e, SymbolTable st) {
+        // Get calling obj and callee method
         String objType = e.f0.accept(this, st), methName = e.f2.accept(this, st);
+        // Get and parse arguments given 
         String args = e.f4.accept(this, st);
-        String[] argsList = args.split(","), given;
+        String[] argsList = args.split(",");
 
+        // Get classinfo of obj and parent if there is one
         ClassInfo obj = st.classes.get(objType),
         parent = (obj != null && obj.parentName != null) ? st.classes.get(obj.parentName) : null;
 
-        MethodInfo callee = (obj != null) ? obj.methods.get(methName) : null;
+        // Get methodinfo of callee if not found in class check also in parent
+        MethodInfo callee = (obj != null) ? obj.getMethod(methName, argsList, st) : null;
         if (callee == null)
-            parent.methods.get(methName);
+            callee = parent.getMethod(methName, argsList, st);
 
-
+        // If class or method is undefined throw error
         if (obj == null)
             throw new SemanticException("Class: " + objType + " is not declared in this scope");
         
         if (callee == null)
             throw new SemanticException("Class: " + objType + " does not contain any method: " + methName);
 
-
-        given = callee.getParamTypes();
-        if (given.length != argsList.length)
-            throw new SemanticException("Invalid method call: " + methName);
-
-        for (int i = 0; i < given.length; i++)
-            if (!objEq(given[i], argsList[i], st))
-                throw new SemanticException("Invalid method call: " + methName);
-
         return callee.returnType;
     }
 
 
-    /** Primary Expression
+    /** Primary Expressions
      * Grammar production:
      * f0 -> IntegerLiteral() !
      *       | TrueLiteral() !
@@ -381,8 +358,6 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     }
 
 
-
-
     // HANDLE EXP LISTS
     /**Exp list
      * Grammar production:
@@ -408,24 +383,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     }
 
 
-    
-
-    public boolean objEq(String type_A, String type_B, SymbolTable st) {
-        if (!type_A.equals(type_B)) {
-            if (st.classes.containsKey(type_A) && st.classes.containsKey(type_B)) {
-                ClassInfo cL = st.classes.get(type_A);
-                ClassInfo cR = st.classes.get(type_B);
-                
-                if (!cL.name.equals(cR.parentName))
-                    return false;
-                
-            } else
-                return false;
-        }
-
-        return true;
-    }
-
+    /* HELPERS */
     public String checkLRtypes(String type_A, String type_B, String valid_t, String msg) {
 
         if (!type_A.equals(valid_t) || !type_B.equals(valid_t))

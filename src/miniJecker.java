@@ -61,6 +61,7 @@ public class miniJecker {
         root.accept(first, st);
         
         System.out.println("Cooked");
+        st.printFull();
 
         symbolJecker second = new symbolJecker();
 

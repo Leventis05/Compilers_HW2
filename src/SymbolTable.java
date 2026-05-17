@@ -5,12 +5,36 @@ public class SymbolTable {
     // GLOBAL scope: class name → ClassInfo
     public HashMap<String, ClassInfo> classes = new HashMap<>();
 
-    public VarInfo checkGetVarType(ClassInfo cClass, MethodInfo method, String name) {
+    public void printDebug() {
+        for (String key : this.classes.keySet())
+            System.out.println("yunara: " + key + " waneira: " + this.classes.get(key).name);
+    }
+
+    public void printFull() {
+        System.out.println("Symbols:");
+        for (String key : this.classes.keySet()) {
+            System.out.println("Class:");
+            this.classes.get(key).print();
+        }
+        
+    }
+
+    public ClassInfo getClass(String name) {
+        for (String key : classes.keySet())
+            if (key.equals(name))
+                return classes.get(key);
+            else if (key.equals("MainClass"))
+                if (classes.get(key).name.equals(name))
+                    return classes.get(key);
+        
+            return null;
+    }
+
+    public VarInfo checkGetVar(ClassInfo cClass, MethodInfo method, String name) {
 
         VarInfo ret = method.getVar(name);
         if (ret == null)
             ret = cClass.getField(name, this);
-        
         
         return ret;
     }
@@ -41,6 +65,19 @@ class ClassInfo {
     /** Key here is a cat: "method_name|overload_index" */ 
     HashMap<String, MethodInfo> methods = new HashMap<>();
 
+    public void print() {
+        System.out.println("    Name: " + name);
+        System.out.println("    Parent Name: " + ((parentName != null) ? parentName : "none"));
+        System.out.println("    Fields: ");
+        for (String key : fields.keySet()) {
+            System.out.println("        " + fields.get(key).type + ": " + fields.get(key).name);
+        }
+
+        System.out.println("    Methods: ");
+        for (String key : methods.keySet()) {
+            methods.get(key).print();
+        }
+    }
 
     public void insertMethod(MethodInfo nMethod, SymbolTable st) {
         String tmp;
@@ -104,24 +141,24 @@ class ClassInfo {
             // Check if there is a chance that this is the right method
             if (key.contains(name)) {
                 ret = methods.get(key);
-
+                
                 // Confirm through methodinfo.name
-                if (ret.name == name) {
+                if (ret.name.equals(name)) {
                     // Get method params
                     params = ret.getParamTypes();
-
+                    
                     // Check len
                     if (params.length != args.length) {
                         ret = null;
                         continue;
                     }
-
+                    
                     // Check types one by one
                     for (i = 0; i < args.length; i++)
                         if (!st.objEq(args[i], params[i]))
                             break;
-
-
+                        
+                        
                     if (i != args.length)
                         // Method didnt match
                         continue;
@@ -131,6 +168,7 @@ class ClassInfo {
                 }
             }
         }
+
 
         return ret;
     }
@@ -146,6 +184,19 @@ class MethodInfo {
     // Name , info
     HashMap<String, VarInfo> parameters = new HashMap<>();
     HashMap<String, VarInfo> locals = new HashMap<>();
+
+    public void print() {
+        System.out.println("        Name: " + name);
+        System.out.println("            Ret Type: " + ((returnType != null) ? returnType : "void"));
+        System.out.println("            Locals:");
+        for (String key : locals.keySet())
+            System.out.println("                " + locals.get(key).type + ": " + locals.get(key).name);
+
+        System.out.println("            Parameters:");
+        for (String key : parameters.keySet())
+            System.out.println("                " + parameters.get(key).type + ": " + parameters.get(key).name);
+
+    }
 
     /** Get var first from param and then locals */
     public VarInfo getVar(String name) {

@@ -28,11 +28,56 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f15 -> ( Statement() )*
      */
     public String visit(MainClass mc, SymbolTable st) {
-        curClass = st.classes.get("MainClass"); // Fetch main class from st
+        curClass = st.getClass("MainClass"); // Fetch main class from st
         String[] args = {"String[]"};
         curMethod = curClass.getMethod(mc.f6.toString(), args, st); // Fetch main method from st
 
         mc.f15.accept(this, st);
+        return null;
+    }
+
+    /**
+     * Grammar production:
+     * f0 -> "class"
+     * f1 -> Identifier()
+     * f2 -> "{"
+     * f3 -> ( VarDeclaration() )*
+     * f4 -> ( MethodDeclaration() )*
+     * f5 -> "}"
+     */
+    public String visit(ClassDeclaration cd, SymbolTable st) {
+        
+        curClass = st.getClass(cd.f1.accept(this, st));
+        curMethod = null;
+        cd.f3.accept(this, st);
+        cd.f4.accept(this, st);
+        
+        st.classes.put(curClass.name, curClass);
+    
+        
+        return null;
+    }
+
+    /**
+     * Grammar production:
+     * f0 -> "class"
+     * f1 -> Identifier()
+     * f2 -> "extends"
+     * f3 -> Identifier()
+     * f4 -> "{"
+     * f5 -> ( VarDeclaration() )*
+     * f6 -> ( MethodDeclaration() )*
+     * f7 -> "}"
+     */
+    public String visit(ClassExtendsDeclaration cd, SymbolTable st) {
+        
+        curClass = st.getClass(cd.f1.accept(this, st));
+        curMethod = null;
+        cd.f3.accept(this, st);
+        cd.f4.accept(this, st);
+        
+        st.classes.put(curClass.name, curClass);
+        
         return null;
     }
 
@@ -46,6 +91,10 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      *       | PrintStatement() !
      */
 
+    public String visit(Statement s, SymbolTable st) {
+        s.f0.accept(this, st);
+        return null;
+    }
 
     /**
      * Grammar production:
@@ -55,13 +104,19 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f3 -> ";"
      */
     public String visit(AssignmentStatement sm, SymbolTable st) {
-        String typeLeft, typeRight;
+        String nameLeft, typeRight;
+        VarInfo leftVar;
 
-        typeLeft = sm.f0.accept(this, st);
+        nameLeft = sm.f0.accept(this, st);
         typeRight = sm.f2.accept(this, st);
 
-        if (!st.objEq(typeLeft, typeRight))
-            throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);         
+        leftVar = st.checkGetVar(curClass, curMethod, nameLeft);
+
+        if (leftVar == null)
+            throw new SemanticException("Identifier: " + nameLeft + " could not be resolved to a variable");
+
+        if (!st.objEq(leftVar.type, typeRight))
+            throw new SemanticException("No assignment op matches: " + leftVar.type + ", " + typeRight);         
 
         return null;
     }
@@ -77,15 +132,19 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f6 -> ";"
      */
     public String visit(ArrayAssignmentStatement sm, SymbolTable st) {
-        String typeLeft = sm.f0.accept(this, st),
+        String nameLeft = sm.f0.accept(this, st),
                indexType = sm.f2.accept(this, st),
                typeRight = sm.f5.accept(this, st);
+        VarInfo varL = st.checkGetVar(curClass, curMethod, nameLeft);
         
+        if (varL == null)
+            throw new SemanticException("Identifier: " + nameLeft + " could not be resolved to a variable");
+
         if (!indexType.equals("int"))
             throw new SemanticException("Array index must be int");
         
-        if (!typeLeft.equals(typeRight))
-            throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);
+        if (!st.objEq(varL.type, typeRight))
+            throw new SemanticException("No assignment op matches: " + varL.type + ", " + typeRight);
  
         return null;
     }
@@ -219,7 +278,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         
         //CHECK FOR ARGV
         if (arrType.equals("String[]"))
-            if (!curClass.name.equals(st.classes.get("MainClass").name) || 
+            if (!curClass.name.equals(st.getClass("MainClass").name) || 
                 !curMethod.name.equals("main"))
                 throw new SemanticException("argv called on non main function");
             else
@@ -258,24 +317,24 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         String objType = e.f0.accept(this, st), methName = e.f2.accept(this, st);
         // Get and parse arguments given 
         String args = e.f4.accept(this, st);
+
         String[] argsList = args.split(",");
 
         // Get classinfo of obj and parent if there is one
-        ClassInfo obj = st.classes.get(objType),
-        parent = (obj != null && obj.parentName != null) ? st.classes.get(obj.parentName) : null;
-
+        ClassInfo obj = st.getClass(objType),
+        parent = (obj != null && obj.parentName != null) ? st.getClass(obj.parentName) : null;
         // Get methodinfo of callee if not found in class check also in parent
         MethodInfo callee = (obj != null) ? obj.getMethod(methName, argsList, st) : null;
-        if (callee == null)
+        if (callee == null && parent != null)
             callee = parent.getMethod(methName, argsList, st);
-
+        
         // If class or method is undefined throw error
         if (obj == null)
             throw new SemanticException("Class: " + objType + " is not declared in this scope");
         
         if (callee == null)
             throw new SemanticException("Class: " + objType + " does not contain any method: " + methName);
-
+        
         return callee.returnType;
     }
 
@@ -313,14 +372,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
     //Identifier
     public String visit(Identifier id, SymbolTable st) {
-        String name = id.f0.toString();
-        VarInfo var = st.checkGetVarType(curClass, curMethod, name);
-        String type = (var != null) ? var.type : null;
-
-        if (type != null)
-            return type;
-        else
-            throw new SemanticException("Identifier: " + name + " has not been declared in this scope");
+        return id.f0.toString();
     }
 
     //ThisExpression
@@ -353,7 +405,13 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f3 -> ")"
      */
     public String visit(AllocationExpression ae, SymbolTable st) {
-        return ae.f1.accept(this, st);
+        String name = ae.f1.accept(this, st);
+        ClassInfo obj = st.getClass(name);
+
+        if (obj == null || name == "MainClass")
+            throw new SemanticException("Object: " + name + " couldn't be allocated");
+
+        return obj.name;
     }
 
     /**
@@ -371,7 +429,8 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     }
 
 
-    // HANDLE EXP LISTS
+    //TODO BUG: identifire returns name
+    // HANDLE EXP LISTS  
     /**Exp list
      * Grammar production:
      * f0 -> Expression()
@@ -379,6 +438,15 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      */
     public String visit(ExpressionList e, SymbolTable st) {
         String argType = e.f0.accept(this, st), argTail = e.f1.accept(this, st);
+        VarInfo var;
+    
+        // check type
+        if (argType != null) {
+            var = st.checkGetVar(curClass, curMethod, argType);
+            if (var != null)
+                argType = var.type;
+        }
+
         return argType + argTail;
     }
 
@@ -387,12 +455,28 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f0 -> ( ExpressionTerm() )*
      */
     public String visit(ExpressionTail e, SymbolTable st) {
-        String types = "";
+        String types = "", tmp;
+        VarInfo var;
 
-        for (Node node : e.f0.nodes)
-            types += "," + node.accept(this, st);
+        for (Node node : e.f0.nodes) {
+            tmp = "," + node.accept(this, st);
+            // Check type
+            var = st.checkGetVar(curClass, curMethod, tmp);
+            if (var != null)
+                tmp = var.type;
+            types += tmp;
+        }
+
 
         return types;
+    }
+
+    public String visit(ExpressionTerm e, SymbolTable st) {
+        return e.f1.accept(this, st);
+    }
+
+    public String visit(Expression e, SymbolTable st) {
+        return e.f0.accept(this, st);
     }
 
 

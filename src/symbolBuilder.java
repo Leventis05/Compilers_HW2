@@ -21,14 +21,14 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
     public String visit(MainClass mc, SymbolTable st) {
         
         curClass = new ClassInfo();
-        curClass.name = mc.f1.toString();
+        curClass.name = mc.f1.accept(this, st);
         curClass.parentName = null;
 
         curMethod = new MethodInfo();
         curMethod.name = mc.f6.toString();
 
         VarInfo argv = new VarInfo();
-        argv.name = mc.f11.toString();
+        argv.name = mc.f11.accept(this, st);
         argv.type = mc.f8.toString() + mc.f9.toString() + mc.f10.toString(); //String[]
 
         curMethod.parameters.put(argv.name, argv);
@@ -56,7 +56,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
     public String visit(ClassDeclaration cd, SymbolTable st) {
         
         curClass = new ClassInfo();
-        curClass.name = cd.f1.toString();
+        curClass.name = cd.f1.accept(this, st);
         curClass.parentName = null;
 
         if (st.classes.containsKey(curClass.name))
@@ -87,10 +87,10 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
         
         ClassInfo parent;
         curClass = new ClassInfo();
-        curClass.name = cd.f1.toString();
-        curClass.parentName = cd.f3.toString();
+        curClass.name = cd.f1.accept(this, st);
+        curClass.parentName = cd.f3.accept(this, st);
         
-        parent = st.classes.get(curClass.parentName);
+        parent = st.getClass(curClass.parentName);
         if (parent == null)
             throw new SemanticException("Class: " + curClass.parentName + " not declared at this scope");
         if (parent.parentName != null)
@@ -114,8 +114,8 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
         
         VarInfo newVar = new VarInfo();
 
-        newVar.type = vd.f0.toString();
-        newVar.name = vd.f1.toString();
+        newVar.type = vd.f0.accept(this, st);
+        newVar.name = vd.f1.accept(this, st);
 
         if (curMethod != null) {
             //CHECK FOR DUPS IN METHOD
@@ -154,8 +154,8 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
    public String visit(MethodDeclaration md, SymbolTable st) {
     
     curMethod = new MethodInfo();
-    curMethod.returnType = md.f1.toString();
-    curMethod.name = md.f2.toString();
+    curMethod.returnType = md.f1.accept(this, st);
+    curMethod.name = md.f2.accept(this, st);
 
     //call f4, f7
     md.f4.accept(this, st);
@@ -169,14 +169,14 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
    
     /**
     * Grammar production:
-    * f0 -> Type()
+    * f0 -> Type() 
     * f1 -> Identifier()
     */
    public String visit(FormalParameter fp, SymbolTable st) {
     
     VarInfo nVar = new VarInfo();
-    nVar.type = fp.f0.toString();
-    nVar.name = fp.f1.toString();
+    nVar.type = fp.f0.accept(this, st);
+    nVar.name = fp.f1.accept(this, st);
 
     curMethod.parameters.put(nVar.name, nVar);
     
@@ -215,6 +215,34 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
         fpl.f1.accept(this, st);
 
         return null;
+    }
+
+    //Identifier
+    public String visit(Identifier id, SymbolTable st) {
+        return id.f0.toString();
+    }
+
+    /**
+     * Grammar production:
+     * f0 -> ArrayType()
+     *       | BooleanType()
+     *       | IntegerType()
+     *       | Identifier()
+     */
+    public String visit(Type n, SymbolTable st) {
+        return n.f0.accept(this, st);
+    }
+
+    public String visit(ArrayType n, SymbolTable st) {
+        return n.f0.toString();
+    }
+
+    public String visit(BooleanType n, SymbolTable st) {
+        return n.f0.toString();
+    }
+
+    public String visit(IntegerType n, SymbolTable st) {
+        return n.f0.toString();
     }
 }
 

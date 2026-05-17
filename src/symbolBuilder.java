@@ -19,6 +19,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
      * f15 -> ( Statement() )*
      */
     public String visit(MainClass mc, SymbolTable st) {
+        
         curClass = new ClassInfo();
         curClass.name = mc.f1.toString();
         curClass.parentName = null;
@@ -34,10 +35,12 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
         
         if (st.classes.containsKey("MainClass"))
             throw new SemanticException("Main class appears twice");
-
+        
         st.classes.put("MainClass", curClass);
-
+        curClass.insertMethod(curMethod, st);
+        
         mc.f14.accept(this, st);
+        
         return null;
     }
 
@@ -51,7 +54,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
      * f5 -> "}"
      */
     public String visit(ClassDeclaration cd, SymbolTable st) {
-
+        
         curClass = new ClassInfo();
         curClass.name = cd.f1.toString();
         curClass.parentName = null;
@@ -65,6 +68,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
         
         st.classes.put(curClass.name, curClass);
     
+        
         return null;
     }
 
@@ -80,6 +84,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
      * f7 -> "}"
      */
     public String visit(ClassExtendsDeclaration cd, SymbolTable st) {
+        
         ClassInfo parent;
         curClass = new ClassInfo();
         curClass.name = cd.f1.toString();
@@ -95,6 +100,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
         cd.f5.accept(this, st);
         cd.f6.accept(this, st);
 
+        
         return null;
     }
 
@@ -105,6 +111,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
      * f2 -> ";"
      */
     public String visit(VarDeclaration vd, SymbolTable st) {
+        
         VarInfo newVar = new VarInfo();
 
         newVar.type = vd.f0.toString();
@@ -124,6 +131,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
 
         }
 
+        
         return null;
     }
 
@@ -144,7 +152,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
      * f12 -> "}"
     */
    public String visit(MethodDeclaration md, SymbolTable st) {
-
+    
     curMethod = new MethodInfo();
     curMethod.returnType = md.f1.toString();
     curMethod.name = md.f2.toString();
@@ -155,6 +163,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
 
     curClass.insertMethod(curMethod, st);
 
+    
     return null;
    }
    
@@ -164,12 +173,13 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
     * f1 -> Identifier()
     */
    public String visit(FormalParameter fp, SymbolTable st) {
+    
     VarInfo nVar = new VarInfo();
     nVar.type = fp.f0.toString();
     nVar.name = fp.f1.toString();
 
     curMethod.parameters.put(nVar.name, nVar);
-
+    
     return null;
    }
 

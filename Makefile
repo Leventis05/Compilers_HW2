@@ -33,4 +33,4 @@ main: $(MAIN_DEP)
 
 run: all
 	java -cp "lib/*:$(JTB_CLASSES):$(PARSER_CLASSES):$(MAIN_CLASSES):." \
-		 miniJecker
+		 miniJecker $(ARGS)

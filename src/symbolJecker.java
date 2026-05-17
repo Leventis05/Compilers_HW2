@@ -28,11 +28,11 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f15 -> ( Statement() )*
      */
     public String visit(MainClass mc, SymbolTable st) {
-        curClass = st.classes.get(mc.f1.toString()); // Fetch main class from st
-        curMethod = curClass.methods.get(mc.f6.toString()); // Fetch main method from st
+        curClass = st.classes.get("MainClass"); // Fetch main class from st
+        String[] args = {"String[]"};
+        curMethod = curClass.getMethod(mc.f6.toString(), args, st); // Fetch main method from st
 
         mc.f15.accept(this, st);
-
         return null;
     }
 
@@ -130,6 +130,18 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         return null;
     }
 
+    /** Print Statement
+     * Grammar production:
+     * f0 -> "System.out.println"
+     * f1 -> "("
+     * f2 -> Expression()
+     * f3 -> ")"
+     * f4 -> ";"
+     */
+    public String visit(PrintStatement sm, SymbolTable st) {
+        sm.f2.accept(this, st);
+        return null;
+    }
 
     /** Expressions
      * Grammar production:
@@ -302,7 +314,8 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     //Identifier
     public String visit(Identifier id, SymbolTable st) {
         String name = id.f0.toString();
-        String type = st.checkGetVarType(curClass, curMethod, name);
+        VarInfo var = st.checkGetVarType(curClass, curMethod, name);
+        String type = (var != null) ? var.type : null;
 
         if (type != null)
             return type;

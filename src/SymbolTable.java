@@ -5,14 +5,14 @@ public class SymbolTable {
     // GLOBAL scope: class name → ClassInfo
     public HashMap<String, ClassInfo> classes = new HashMap<>();
 
-    public String checkGetVarType(ClassInfo cClass, MethodInfo method, String name) {
+    public VarInfo checkGetVarType(ClassInfo cClass, MethodInfo method, String name) {
 
         VarInfo ret = method.getVar(name);
-
         if (ret == null)
             ret = cClass.getField(name, this);
-
-        return ret.type;
+        
+        
+        return ret;
     }
 
     public boolean objEq(String type_A, String type_B) {
@@ -37,9 +37,9 @@ class ClassInfo {
     String name;
     String parentName;
 
-    HashMap<String, VarInfo> fields;
+    HashMap<String, VarInfo> fields = new HashMap<>();
     /** Key here is a cat: "method_name|overload_index" */ 
-    HashMap<String, MethodInfo> methods;
+    HashMap<String, MethodInfo> methods = new HashMap<>();
 
 
     public void insertMethod(MethodInfo nMethod, SymbolTable st) {
@@ -144,8 +144,8 @@ class MethodInfo {
     int overloadIndex;
 
     // Name , info
-    HashMap<String, VarInfo> parameters;
-    HashMap<String, VarInfo> locals;
+    HashMap<String, VarInfo> parameters = new HashMap<>();
+    HashMap<String, VarInfo> locals = new HashMap<>();
 
     /** Get var first from param and then locals */
     public VarInfo getVar(String name) {

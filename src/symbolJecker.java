@@ -4,18 +4,7 @@ import visitor.*;
 
 public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     /** Jeck list:
-     *      ~ Type checking
-     *         - expressions
-     *         - assignments
-     *         - method calls
-     *         - return types
-     *      ~ Scope checking
-     *         - var declaration
-     *      ~ CFV
-     *         - if
-     *         - while
-     *         - for (maybe?)
-     *      ~ Inheritance
+     * TODO make bracket expr
      */
 
     private ClassInfo curClass;
@@ -198,10 +187,9 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     public String visit(AssignmentStatement sm, SymbolTable st) {
         String nameLeft, typeRight;
         VarInfo leftVar;
-
+        System.out.println("he");
         nameLeft = sm.f0.accept(this, st);
         typeRight = sm.f2.accept(this, st);
-
         leftVar = st.checkGetVar(curClass, curMethod, nameLeft);
 
         if (leftVar == null)
@@ -209,6 +197,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
         if (!st.objEq(leftVar.type, typeRight))
             throw new SemanticException("No assignment op matches: " + leftVar.type + ", " + typeRight);         
+
 
         return null;
     }
@@ -276,8 +265,8 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         if (!cond.equals("boolean"))
             throw new SemanticException("while statement expects boolean");
 
+        System.out.println("i will beat u");
         sm.f4.accept(this, st);
-
         return null;
     }
 
@@ -307,7 +296,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      *       | PrimaryExpression()
      */
     public String visit(AndExpression exp, SymbolTable st) {
-        String type_A = exp.f0.accept(this, st), type_B = exp.f1.accept(this, st);
+        String type_A = exp.f0.accept(this, st), type_B = exp.f2.accept(this, st);
 
         checkLRtypes(type_A, type_B, "boolean", "AND op expects bool", st);
         return "boolean";
@@ -320,7 +309,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f2 -> PrimaryExpression()
      */
     public String visit(CompareExpression ce, SymbolTable st) {
-        String type_A = ce.f0.accept(this, st), type_B = ce.f1.accept(this, st);
+        String type_A = ce.f0.accept(this, st), type_B = ce.f2.accept(this, st);
 
         checkLRtypes(type_A, type_B, "int", "Compare op expects int", st);
         return "boolean";
@@ -328,7 +317,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
     //+
     public String visit(PlusExpression pe, SymbolTable st) {
-        String type_A = pe.f0.accept(this, st), type_B = pe.f1.accept(this, st);
+        String type_A = pe.f0.accept(this, st), type_B = pe.f2.accept(this, st);
 
         checkLRtypes(type_A, type_B, "int", "PLUS op expects int", st);
         return "int";
@@ -336,7 +325,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
     //-
     public String visit(MinusExpression e, SymbolTable st) {
-        String type_A = e.f0.accept(this, st), type_B = e.f1.accept(this, st);
+        String type_A = e.f0.accept(this, st), type_B = e.f2.accept(this, st);
         checkLRtypes(type_A, type_B, "int", "MINUS op expects int", st);
         return "int";
     }
@@ -505,7 +494,6 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     }
 
 
-    //TODO BUG: identifire returns name
     // HANDLE EXP LISTS  
     /**Exp list
      * Grammar production:
@@ -569,7 +557,6 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         var = st.checkGetVar(curClass, curMethod, type_B);
         if (var != null)
             t2 = var.type;
-
 
         if (!t1.equals(valid_t) || !t2.equals(valid_t))
             throw new SemanticException(msg);

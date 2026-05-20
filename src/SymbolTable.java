@@ -2,7 +2,7 @@ import java.util.HashMap;
 
 public class SymbolTable {
 
-    // GLOBAL scope: class name → ClassInfo
+    // GLOBAL scope: class name -> ClassInfo
     public HashMap<String, ClassInfo> classes = new HashMap<>();
 
     public void printDebug() {
@@ -147,6 +147,14 @@ class ClassInfo {
                     // Get method params
                     params = ret.getParamTypes();
                     
+                    if (args == null) {
+                        if (params == null || params.length == 0 || params[0].isEmpty()) {
+                            break;
+                        } else {
+                            continue;
+                        }
+                    }
+
                     // Check len
                     if (params.length != args.length) {
                         ret = null;

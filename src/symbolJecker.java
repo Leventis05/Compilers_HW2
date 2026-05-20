@@ -81,6 +81,98 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         return null;
     }
 
+    /**
+     * Grammar production:
+     * f0 -> "public"
+     * f1 -> Type()
+     * f2 -> Identifier()
+     * f3 -> "("
+     * f4 -> ( FormalParameterList() )?
+     * f5 -> ")"
+     * f6 -> "{"
+     * f7 -> ( VarDeclaration() )*
+     * f8 -> ( Statement() )*
+     * f9 -> "return"
+     * f10 -> Expression()
+     * f11 -> ";"
+     * f12 -> "}"
+     */
+    public String visit(MethodDeclaration md, SymbolTable st) {
+        String meth = md.f2.accept(this, st);
+        String params_s = md.f4.accept(this, st);
+        String[] params = (params_s != null) ? params_s.split(",") : null;
+        curMethod = curClass.getMethod(meth, params, st);
+        md.f8.accept(this, st);
+        md.f10.accept(this, st);
+        return null;
+    }
+
+    /** list
+     * Grammar production:
+     * f0 -> FormalParameter()
+     * f1 -> FormalParameterTail()
+     */
+    public String visit(FormalParameterList fp, SymbolTable st) {
+        String first = fp.f0.accept(this, st);
+        String tail = fp.f1.accept(this, st);
+        return first + "," + tail;
+    }
+    
+    /**fp
+     * Grammar production:
+     * f0 -> Type()
+     * f1 -> Identifier()
+     */
+    public String visit(FormalParameter fp, SymbolTable st) {
+        return fp.f0.accept(this, st);
+    }
+
+    /**tail
+     * Grammar production:
+     * f0 -> ( FormalParameterTerm() )*
+     */
+    public String visit(FormalParameterTail fp, SymbolTable st) {
+        String ret = "";
+
+        for (Node node : fp.f0.nodes) {
+            ret += fp.f0.accept(this, st);
+        }
+        return ret;
+    }
+
+
+    /** term
+     * Grammar production:
+     * f0 -> ","
+     * f1 -> FormalParameter()
+     */
+    public String visit(FormalParameterTerm fp, SymbolTable st) {
+        return fp.f1.accept(this, st);
+    }
+
+    /**
+     * Grammar production:
+     * f0 -> ArrayType()
+     *       | BooleanType()
+     *       | IntegerType()
+     *       | Identifier()
+     */
+    public String visit(Type n, SymbolTable st) {
+        return n.f0.accept(this, st);
+    }
+
+    public String visit(ArrayType n, SymbolTable st) {
+        return n.f0.toString();
+    }
+
+    public String visit(BooleanType n, SymbolTable st) {
+        return n.f0.toString();
+    }
+
+    public String visit(IntegerType n, SymbolTable st) {
+        return n.f0.toString();
+    }
+
     /** STATEMENTS
      * Grammar production:
      * f0 -> Block() !
@@ -214,16 +306,10 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      *       | MessageSend() !
      *       | PrimaryExpression()
      */
-    /** &&
-     * Grammar production:
-     * f0 -> PrimaryExpression()
-     * f1 -> "&&"
-     * f2 -> PrimaryExpression()
-     */
     public String visit(AndExpression exp, SymbolTable st) {
         String type_A = exp.f0.accept(this, st), type_B = exp.f1.accept(this, st);
 
-        checkLRtypes(type_A, type_B, "boolean", "AND op expects bool");
+        checkLRtypes(type_A, type_B, "boolean", "AND op expects bool", st);
         return "boolean";
     }
 
@@ -236,7 +322,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     public String visit(CompareExpression ce, SymbolTable st) {
         String type_A = ce.f0.accept(this, st), type_B = ce.f1.accept(this, st);
 
-        checkLRtypes(type_A, type_B, "int", "Compare op expects int");
+        checkLRtypes(type_A, type_B, "int", "Compare op expects int", st);
         return "boolean";
     }
 
@@ -244,23 +330,14 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     public String visit(PlusExpression pe, SymbolTable st) {
         String type_A = pe.f0.accept(this, st), type_B = pe.f1.accept(this, st);
 
-        checkLRtypes(type_A, type_B, "int", "PLUS op expects int");
+        checkLRtypes(type_A, type_B, "int", "PLUS op expects int", st);
         return "int";
     }
 
     //-
     public String visit(MinusExpression e, SymbolTable st) {
         String type_A = e.f0.accept(this, st), type_B = e.f1.accept(this, st);
-
-        checkLRtypes(type_A, type_B, "int", "MINUS op expects int");
-        return "int";
-    }
-
-    //Times
-    public String visit(TimesExpression e, SymbolTable st) {
-        String type_A = e.f0.accept(this, st), type_B = e.f1.accept(this, st);
-
-        checkLRtypes(type_A, type_B, "int", "TIMES op expects int");
+        checkLRtypes(type_A, type_B, "int", "MINUS op expects int", st);
         return "int";
     }
 
@@ -274,7 +351,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     public String visit(ArrayLookup e, SymbolTable st) {
         String arrType = e.f0.accept(this, st), inType = e.f2.accept(this, st);
 
-        checkLRtypes(inType, inType, "int", "Array lookup expects int");
+        checkLRtypes(inType, inType, "int", "Array lookup expects int", st);
         
         //CHECK FOR ARGV
         if (arrType.equals("String[]"))
@@ -284,7 +361,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
             else
                 return "String";
 
-        checkLRtypes(arrType, arrType, "int[]", "Lookup op used on non array obj");
+        checkLRtypes(arrType, arrType, "int[]", "Lookup op used on non array obj", st);
         return "int";
     }
 
@@ -318,7 +395,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         // Get and parse arguments given 
         String args = e.f4.accept(this, st);
 
-        String[] argsList = args.split(",");
+        String[] argsList = (args != null) ? args.split(",") : null;
 
         // Get classinfo of obj and parent if there is one
         ClassInfo obj = st.getClass(objType),
@@ -334,7 +411,6 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         
         if (callee == null)
             throw new SemanticException("Class: " + objType + " does not contain any method: " + methName);
-        
         return callee.returnType;
     }
 
@@ -446,7 +522,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
             if (var != null)
                 argType = var.type;
         }
-
+    
         return argType + argTail;
     }
 
@@ -459,9 +535,11 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         VarInfo var;
 
         for (Node node : e.f0.nodes) {
+            System.out.println("sugma");
             tmp = "," + node.accept(this, st);
             // Check type
             var = st.checkGetVar(curClass, curMethod, tmp);
+            System.out.println("weneira: " + tmp);
             if (var != null)
                 tmp = var.type;
             types += tmp;
@@ -481,9 +559,19 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
 
     /* HELPERS */
-    public String checkLRtypes(String type_A, String type_B, String valid_t, String msg) {
+    public String checkLRtypes(String type_A, String type_B, String valid_t, String msg, SymbolTable st) {
+        String t1 = type_A, t2 = type_B;
 
-        if (!type_A.equals(valid_t) || !type_B.equals(valid_t))
+        VarInfo var = st.checkGetVar(curClass, curMethod, type_A);
+        if (var != null)
+            t1 = var.type;
+
+        var = st.checkGetVar(curClass, curMethod, type_B);
+        if (var != null)
+            t2 = var.type;
+
+
+        if (!t1.equals(valid_t) || !t2.equals(valid_t))
             throw new SemanticException(msg);
 
         else

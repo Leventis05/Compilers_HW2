@@ -31,7 +31,6 @@ public class SymbolTable {
     }
 
     public VarInfo checkGetVar(ClassInfo cClass, MethodInfo method, String name) {
-
         VarInfo ret = method.getVar(name);
         if (ret == null)
             ret = cClass.getField(name, this);
@@ -213,7 +212,7 @@ class MethodInfo {
         
         if (ret == null)
             ret = locals.get(name);
-            
+        
         return ret;
     }
 

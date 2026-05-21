@@ -35,15 +35,10 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f5 -> "}"
      */
     public String visit(ClassDeclaration cd, SymbolTable st) {
-        
         curClass = st.getClass(cd.f1.accept(this, st));
         curMethod = null;
-        cd.f3.accept(this, st);
+        // cd.f3.accept(this, st);
         cd.f4.accept(this, st);
-        
-        st.classes.put(curClass.name, curClass);
-    
-        
         return null;
     }
 
@@ -62,10 +57,8 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         
         curClass = st.getClass(cd.f1.accept(this, st));
         curMethod = null;
-        cd.f3.accept(this, st);
-        cd.f4.accept(this, st);
-        
-        st.classes.put(curClass.name, curClass);
+        // cd.f5.accept(this, st);
+        cd.f6.accept(this, st);
         
         return null;
     }
@@ -89,10 +82,14 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     public String visit(MethodDeclaration md, SymbolTable st) {
         String meth = md.f2.accept(this, st);
         String params_s = md.f4.accept(this, st);
+        String ret = md.f10.accept(this, st);
         String[] params = (params_s != null) ? params_s.split(",") : null;
+    
         curMethod = curClass.getMethod(meth, params, st);
         md.f8.accept(this, st);
-        md.f10.accept(this, st);
+
+        if (!ret.equals(curMethod.returnType))
+            throw new SemanticException("Method: " + curMethod.name + " returns: " + curMethod.returnType);
         return null;
     }
 
@@ -124,7 +121,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         String ret = "";
 
         for (Node node : fp.f0.nodes) {
-            ret += fp.f0.accept(this, st);
+            ret += node.accept(this, st);
         }
         return ret;
     }
@@ -185,18 +182,12 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
      * f3 -> ";"
      */
     public String visit(AssignmentStatement sm, SymbolTable st) {
-        String nameLeft, typeRight;
-        VarInfo leftVar;
-        System.out.println("he");
-        nameLeft = sm.f0.accept(this, st);
+        String typeLeft, typeRight;
+        typeLeft = sm.f0.accept(this, st);
         typeRight = sm.f2.accept(this, st);
-        leftVar = st.checkGetVar(curClass, curMethod, nameLeft);
 
-        if (leftVar == null)
-            throw new SemanticException("Identifier: " + nameLeft + " could not be resolved to a variable");
-
-        if (!st.objEq(leftVar.type, typeRight))
-            throw new SemanticException("No assignment op matches: " + leftVar.type + ", " + typeRight);         
+        if (!st.objEq(typeLeft, typeRight))
+            throw new SemanticException("No assignment op matches: " + typeLeft + ", " + typeRight);         
 
 
         return null;
@@ -216,16 +207,13 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         String nameLeft = sm.f0.accept(this, st),
                indexType = sm.f2.accept(this, st),
                typeRight = sm.f5.accept(this, st);
-        VarInfo varL = st.checkGetVar(curClass, curMethod, nameLeft);
-        
-        if (varL == null)
-            throw new SemanticException("Identifier: " + nameLeft + " could not be resolved to a variable");
+       
 
         if (!indexType.equals("int"))
             throw new SemanticException("Array index must be int");
         
-        if (!st.objEq(varL.type, typeRight))
-            throw new SemanticException("No assignment op matches: " + varL.type + ", " + typeRight);
+        if (!nameLeft.equals("int[]"))
+            throw new SemanticException("No assignment op matches: " + nameLeft + ", " + typeRight);
  
         return null;
     }
@@ -265,7 +253,6 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         if (!cond.equals("boolean"))
             throw new SemanticException("while statement expects boolean");
 
-        System.out.println("i will beat u");
         sm.f4.accept(this, st);
         return null;
     }
@@ -340,6 +327,7 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     public String visit(ArrayLookup e, SymbolTable st) {
         String arrType = e.f0.accept(this, st), inType = e.f2.accept(this, st);
 
+                
         checkLRtypes(inType, inType, "int", "Array lookup expects int", st);
         
         //CHECK FOR ARGV
@@ -437,7 +425,15 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
 
     //Identifier
     public String visit(Identifier id, SymbolTable st) {
-        return id.f0.toString();
+        String name = id.f0.toString();
+
+        if (curMethod != null) {
+            VarInfo var = st.checkGetVar(curClass, curMethod, name);
+            if (var != null)
+                name = var.type;
+        }
+
+        return name;
     }
 
     //ThisExpression
@@ -493,6 +489,16 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         return "boolean";
     }
 
+    /** Bracket expr
+     * Grammar production:
+     * f0 -> "("
+     * f1 -> Expression()
+     * f2 -> ")"
+     */
+    public String visit(BracketExpression e, SymbolTable st) {
+        return e.f1.accept(this, st);
+    }
+
 
     // HANDLE EXP LISTS  
     /**Exp list
@@ -505,11 +511,11 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         VarInfo var;
     
         // check type
-        if (argType != null) {
-            var = st.checkGetVar(curClass, curMethod, argType);
-            if (var != null)
-                argType = var.type;
-        }
+        // if (argType != null) {
+        //     var = st.checkGetVar(curClass, curMethod, argType);
+        //     if (var != null)
+        //         argType = var.type;
+        // }
     
         return argType + argTail;
     }
@@ -523,13 +529,11 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
         VarInfo var;
 
         for (Node node : e.f0.nodes) {
-            System.out.println("sugma");
             tmp = "," + node.accept(this, st);
             // Check type
-            var = st.checkGetVar(curClass, curMethod, tmp);
-            System.out.println("weneira: " + tmp);
-            if (var != null)
-                tmp = var.type;
+            // var = st.checkGetVar(curClass, curMethod, tmp);
+            // if (var != null)
+            //     tmp = var.type;
             types += tmp;
         }
 
@@ -550,13 +554,13 @@ public class symbolJecker extends GJDepthFirst<String, SymbolTable> {
     public String checkLRtypes(String type_A, String type_B, String valid_t, String msg, SymbolTable st) {
         String t1 = type_A, t2 = type_B;
 
-        VarInfo var = st.checkGetVar(curClass, curMethod, type_A);
-        if (var != null)
-            t1 = var.type;
+        // VarInfo var = st.checkGetVar(curClass, curMethod, type_A);
+        // if (var != null)
+        //     t1 = var.type;
 
-        var = st.checkGetVar(curClass, curMethod, type_B);
-        if (var != null)
-            t2 = var.type;
+        // var = st.checkGetVar(curClass, curMethod, type_B);
+        // if (var != null)
+        //     t2 = var.type;
 
         if (!t1.equals(valid_t) || !t2.equals(valid_t))
             throw new SemanticException(msg);

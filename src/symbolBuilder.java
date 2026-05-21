@@ -234,7 +234,7 @@ public class symbolBuilder extends GJDepthFirst<String, SymbolTable>{
     }
 
     public String visit(ArrayType n, SymbolTable st) {
-        return n.f0.toString();
+        return n.f0.toString() + n.f1.toString() + n.f2.toString();
     }
 
     public String visit(BooleanType n, SymbolTable st) {
